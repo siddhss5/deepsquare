@@ -50,6 +50,7 @@ class CoachRequest(BaseModel):
     fen: str
     engine_eval: float
     top_lines: list[EngineLine]
+    moves: list[str] = []  # SAN move history leading to this position
 
 
 # ── Endpoints ──
@@ -90,7 +91,7 @@ async def coach(req: CoachRequest, request: Request):
 
     def event_generator():
         try:
-            for token in stream_coaching(req.fen, engine_input, api_key=api_key, model=model):
+            for token in stream_coaching(req.fen, engine_input, moves=req.moves, api_key=api_key, model=model):
                 yield {"event": "coaching", "data": token}
             yield {"event": "done", "data": ""}
         except ValueError as e:

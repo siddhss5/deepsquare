@@ -46,16 +46,25 @@ class EngineInput:
     top_lines: list[dict]  # [{"moves": "e4 e5 ...", "eval": 0.3}, ...]
 
 
-def _build_user_message(fen: str, engine: EngineInput) -> str:
+def _build_user_message(fen: str, engine: EngineInput, moves: list[str] | None = None) -> str:
     lines_text = "\n".join(
         f"  {i+1}. {line['moves']} (eval: {line['eval']:+.2f})"
         for i, line in enumerate(engine.top_lines)
     )
-    return (
-        f"Position (FEN): {fen}\n"
-        f"Eval: {engine.eval:+.2f} (from white's perspective)\n"
-        f"Top engine lines:\n{lines_text}"
-    )
+    parts = []
+    if moves:
+        # Format as "1.e4 e5 2.Nf3 Nc6 ..."
+        move_strs = []
+        for i, san in enumerate(moves):
+            if i % 2 == 0:
+                move_strs.append(f"{i // 2 + 1}.{san}")
+            else:
+                move_strs.append(san)
+        parts.append(f"Game so far: {' '.join(move_strs)}")
+    parts.append(f"Position (FEN): {fen}")
+    parts.append(f"Eval: {engine.eval:+.2f} (from white's perspective)")
+    parts.append(f"Top engine lines:\n{lines_text}")
+    return "\n".join(parts)
 
 
 def _resolve_model(model: str | None) -> str:
@@ -71,6 +80,7 @@ def _resolve_api_key(api_key: str | None) -> str | None:
 def stream_coaching(
     fen: str,
     engine: EngineInput,
+    moves: list[str] | None = None,
     api_key: str | None = None,
     model: str | None = None,
 ) -> Generator[str, None, None]:
@@ -85,7 +95,7 @@ def stream_coaching(
         model=resolved_model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": _build_user_message(fen, engine)},
+            {"role": "user", "content": _build_user_message(fen, engine, moves)},
         ],
         max_tokens=500,
         temperature=0.7,

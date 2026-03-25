@@ -13,20 +13,40 @@ const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
 // ── Helpers ──
 
+// Chess move pattern: standard algebraic notation
+// Matches: e4, Nf3, Bxe5, O-O, O-O-O, Qxf7+, Rh8#, exd5, Nbd2, R1e1
+const MOVE_RE = /(?<![a-zA-Z])([KQRBN][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?|[a-h]x[a-h][1-8](?:=[QRBN])?[+#]?|[a-h][1-8][+#]?|O-O(?:-O)?[+#]?)(?![a-zA-Z])/g
+
 function cleanCoaching(raw: string): string {
   let text = raw
+  // Fix tokenizer splitting contractions: "You 're" → "You're"
   text = text.replace(/ '/g, "'")
+  // Fix spaces before punctuation: "coordination ." → "coordination."
   text = text.replace(/ ([.,;:!?])/g, '$1')
+
+  // Process explicit {move} markers: strip spaces inside
   text = text.replace(/\{([^}]*)\}/g, (_, inner: string) => {
     const clean = inner.replace(/\s+/g, '')
     return `<code class="move">${clean}</code>`
   })
+  // Process [concept] markers
   text = text.replace(/\[([^\]]*)\]/g, (_, inner) => {
     const clean = inner.replace(/\s+/g, ' ').trim()
     return `<strong>${clean}</strong>`
   })
+  // Clean up stray **
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   text = text.replace(/\*\*/g, '')
+
+  // Auto-detect unwrapped chess moves — run on the current text
+  // but skip content already inside <code> tags.
+  // Split by <code>...</code> segments, only process outside segments.
+  const parts = text.split(/(<code class="move">.*?<\/code>)/g)
+  text = parts.map(part => {
+    if (part.startsWith('<code class="move">')) return part
+    return part.replace(MOVE_RE, (match) => `<code class="move">${match}</code>`)
+  }).join('')
+
   return text
 }
 
@@ -186,7 +206,7 @@ function App() {
   const settingsRef = useRef(settings)
   settingsRef.current = settings
 
-  const fetchCoaching = useCallback(async (fen: string, engine: EngineData) => {
+  const fetchCoaching = useCallback(async (fen: string, engine: EngineData, moves: string[] = []) => {
     const s = settingsRef.current
     if (!s.apiKey) {
       setCoachError('Set your API key in Settings to use the coach.')
@@ -206,7 +226,7 @@ function App() {
           'X-API-Key': s.apiKey,
           'X-LLM-Model': s.model,
         },
-        body: JSON.stringify({ fen, engine_eval: engine.eval, top_lines: engine.top_lines }),
+        body: JSON.stringify({ fen, engine_eval: engine.eval, top_lines: engine.top_lines, moves }),
         signal: controller.signal,
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -387,7 +407,10 @@ function App() {
   }
 
   const handleCoachMe = () => {
-    if (engineData) fetchCoaching(currentFen, engineData)
+    if (!engineData) return
+    // Build move list from history up to current position
+    const moves = history.slice(1, currentIndex + 1).map(h => h.san).filter(Boolean) as string[]
+    fetchCoaching(currentFen, engineData, moves)
   }
 
   const handleReset = () => {
