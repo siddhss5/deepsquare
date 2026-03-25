@@ -1,37 +1,95 @@
+/* ── App shell ── */
 .app {
-  max-width: 1100px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 24px 16px;
 }
 
-header h1 {
-  font-size: 28px;
-  font-weight: 600;
+header {
+  text-align: center;
   margin-bottom: 24px;
-  color: var(--accent-bright);
 }
 
+header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent-bright);
+  letter-spacing: -0.5px;
+}
+
+/* ── Main layout ── */
 main {
   display: flex;
-  gap: 32px;
+  gap: 24px;
+  justify-content: center;
   align-items: flex-start;
 }
 
-/* Board */
-.board-panel {
+/* ── Board column ── */
+.board-column {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.board-wrapper {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
 }
 
 .board {
-  --board-size: min(480px, calc(100vw - 32px));
+  --board-size: min(480px, calc(100vw - 80px));
   width: var(--board-size);
   height: var(--board-size);
 }
 
+/* ── Eval bar ──
+   Always rendered to prevent layout shift.
+   Vertical on desktop (left of board), horizontal on mobile (above board). */
+.eval-bar {
+  width: 24px;
+  border-radius: 4px;
+  background: var(--border);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.eval-bar-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--white-pct, 50%);
+  background: #e8e8e8;
+  transition: height 0.4s ease;
+}
+
+.eval-bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--text);
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+  z-index: 1;
+  mix-blend-mode: difference;
+}
+
+/* ── Board controls ── */
 .board-controls {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 10px;
+  width: 100%;
+  max-width: var(--board-size);
 }
 
 .board-controls button {
@@ -42,6 +100,7 @@ main {
   background: var(--bg-surface);
   color: var(--text);
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -55,20 +114,100 @@ main {
   cursor: not-allowed;
 }
 
-/* Analysis panel */
-.analysis-panel {
+/* ── Side panel ── */
+.side-panel {
   flex: 1;
   min-width: 0;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.side-panel section h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* ── Coaching section ── */
+.coaching-section {
+  background: var(--bg-surface);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.coaching-body p {
+  line-height: 1.65;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.coaching-body p.placeholder {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.coaching-body p.is-stale {
+  opacity: 0.5;
+}
+
+/* ── Engine lines ── */
+.engine-section {
+  background: var(--bg-surface);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.line {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.line + .line {
+  border-top: 1px solid var(--border);
+}
+
+.line-eval {
+  font-weight: 700;
+  min-width: 40px;
+  color: var(--text);
+}
+
+.line-moves {
+  color: var(--text-muted);
+}
+
+.line.placeholder {
+  color: var(--text-muted);
+}
+
+.line.placeholder .line-eval {
+  color: var(--text-muted);
+}
+
+.line.is-stale {
+  opacity: 0.5;
+}
+
+/* ── FEN input ── */
+.fen-section {
+  margin-top: auto;
 }
 
 .fen-label {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
-  margin-bottom: 16px;
 }
 
 .fen-label input {
@@ -81,7 +220,7 @@ main {
   background: var(--bg-surface);
   color: var(--text);
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .fen-label input:focus {
@@ -89,84 +228,74 @@ main {
   border-color: var(--accent-bright);
 }
 
-.analysis-result {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.eval {
-  font-size: 24px;
-  font-family: var(--mono);
-}
-
-.top-lines h3,
-.coaching h3 {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
-
-.line {
-  display: flex;
-  gap: 12px;
-  padding: 6px 10px;
-  border-radius: 4px;
-  background: var(--bg-surface);
-  font-family: var(--mono);
-  font-size: 13px;
-  margin-bottom: 4px;
-}
-
-.line-eval {
-  font-weight: 600;
-  min-width: 48px;
-}
-
-.coaching p {
-  line-height: 1.6;
-  color: var(--text-muted);
-}
-
-/* Mobile */
+/* ── Mobile ── */
 @media (max-width: 700px) {
   .app {
-    padding: 16px 12px;
+    padding: 12px;
+  }
+
+  header {
+    margin-bottom: 12px;
   }
 
   header h1 {
-    font-size: 22px;
-    margin-bottom: 16px;
+    font-size: 20px;
   }
 
   main {
     flex-direction: column;
-    gap: 20px;
+    align-items: center;
+    gap: 16px;
   }
 
-  .board-panel {
+  .board-column {
     width: 100%;
-    display: flex;
+    align-items: center;
+  }
+
+  .board-wrapper {
     flex-direction: column;
     align-items: center;
   }
 
+  .board {
+    --board-size: calc(100vw - 24px);
+    max-width: 480px;
+  }
+
+  /* Horizontal eval bar on mobile */
+  .eval-bar {
+    width: var(--board-size);
+    max-width: 480px;
+    height: 20px;
+  }
+
+  .eval-bar-fill {
+    height: 100%;
+    width: var(--white-pct, 50%);
+    bottom: auto;
+    top: 0;
+    left: 0;
+    right: auto;
+    transition: width 0.4s ease;
+  }
+
+  .eval-bar-label {
+    writing-mode: horizontal-tb;
+    font-size: 10px;
+  }
+
   .board-controls {
+    max-width: 480px;
     width: var(--board-size);
   }
 
-  .fen-label input {
-    font-size: 11px;
+  .side-panel {
+    width: var(--board-size);
+    max-width: 480px;
   }
 
-  .eval {
-    font-size: 20px;
-  }
-
-  .line {
-    font-size: 12px;
+  .coaching-body p {
+    font-size: 14px;
   }
 }

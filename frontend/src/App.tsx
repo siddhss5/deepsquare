@@ -38,6 +38,10 @@ function App() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const evalValue = analysis?.eval ?? 0
+  const evalClamped = Math.max(-5, Math.min(5, evalValue))
+  const whitePct = 50 + (evalClamped / 5) * 50
+
   const updateAfterMove = useCallback((chess: Chess, lastMove?: [Key, Key]) => {
     setFen(chess.fen())
     cgRef.current?.set({
@@ -103,7 +107,6 @@ function App() {
 
   const handleAnalyze = async () => {
     setLoading(true)
-    setAnalysis(null)
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -113,8 +116,6 @@ function App() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data: AnalysisResult = await res.json()
       setAnalysis(data)
-      // Layout shift from analysis panel invalidates chessground's cached bounds
-      requestAnimationFrame(() => cgRef.current?.redrawAll())
     } catch (err) {
       console.error('Analysis failed:', err)
     } finally {
@@ -129,6 +130,8 @@ function App() {
     setPosition(chess)
   }
 
+  const hasAnalysis = analysis !== null
+
   return (
     <div className="app">
       <header>
@@ -136,8 +139,21 @@ function App() {
       </header>
 
       <main>
-        <div className="board-panel">
-          <div ref={boardRef} className="board" />
+        <div className="board-column">
+          <div className="board-wrapper">
+            <div
+              className={`eval-bar ${hasAnalysis ? 'has-data' : ''}`}
+              style={{ '--white-pct': `${whitePct}%` } as React.CSSProperties}
+            >
+              <div className="eval-bar-fill" />
+              {hasAnalysis && (
+                <span className="eval-bar-label">
+                  {evalValue > 0 ? '+' : ''}{evalValue.toFixed(1)}
+                </span>
+              )}
+            </div>
+            <div ref={boardRef} className="board" />
+          </div>
           <div className="board-controls">
             <button onClick={handleReset}>Reset</button>
             <button onClick={handleAnalyze} disabled={loading}>
@@ -146,39 +162,54 @@ function App() {
           </div>
         </div>
 
-        <div className="analysis-panel">
-          <label className="fen-label">
-            FEN
-            <input
-              type="text"
-              value={fen}
-              onChange={(e) => handleFenChange(e.target.value)}
-              spellCheck={false}
-            />
-          </label>
+        <div className="side-panel">
+          <section className="coaching-section">
+            <h3>Coach</h3>
+            <div className={`coaching-body ${loading && !hasAnalysis ? 'is-loading' : ''}`}>
+              {hasAnalysis ? (
+                <p className={loading ? 'is-stale' : ''}>{analysis.coaching}</p>
+              ) : (
+                <p className="placeholder">
+                  {loading
+                    ? 'Thinking...'
+                    : 'Set up a position and click Analyze to get coaching.'}
+                </p>
+              )}
+            </div>
+          </section>
 
-          {analysis && (
-            <div className="analysis-result">
-              <div className="eval">
-                Eval: <strong>{analysis.eval > 0 ? '+' : ''}{analysis.eval}</strong>
-              </div>
-              <div className="top-lines">
-                <h3>Top lines</h3>
-                {analysis.top_lines.map((line, i) => (
-                  <div key={i} className="line">
+          <section className="engine-section">
+            <h3>Engine lines</h3>
+            <div className="engine-body">
+              {hasAnalysis ? (
+                analysis.top_lines.map((line, i) => (
+                  <div key={i} className={`line ${loading ? 'is-stale' : ''}`}>
                     <span className="line-eval">
                       {line.eval > 0 ? '+' : ''}{line.eval}
                     </span>
                     <span className="line-moves">{line.moves}</span>
                   </div>
-                ))}
-              </div>
-              <div className="coaching">
-                <h3>Coach</h3>
-                <p>{analysis.coaching}</p>
-              </div>
+                ))
+              ) : (
+                <div className="line placeholder">
+                  <span className="line-eval">—</span>
+                  <span className="line-moves">No analysis yet</span>
+                </div>
+              )}
             </div>
-          )}
+          </section>
+
+          <section className="fen-section">
+            <label className="fen-label">
+              FEN
+              <input
+                type="text"
+                value={fen}
+                onChange={(e) => handleFenChange(e.target.value)}
+                spellCheck={false}
+              />
+            </label>
+          </section>
         </div>
       </main>
     </div>
