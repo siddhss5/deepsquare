@@ -86,13 +86,51 @@ main {
 /* ── Board controls ── */
 .board-controls {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-top: 10px;
   width: 100%;
   max-width: var(--board-size);
+  align-items: center;
 }
 
-.board-controls button {
+.nav-buttons {
+  display: flex;
+  gap: 2px;
+}
+
+.nav-buttons button {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.nav-buttons button:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.nav-buttons button:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.nav-buttons button:not(:first-child):not(:last-child) {
+  border-radius: 0;
+}
+
+.nav-buttons button:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--text);
+}
+
+.nav-buttons button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.board-controls > button {
   flex: 1;
   padding: 10px 16px;
   border: 1px solid var(--border);
@@ -105,7 +143,7 @@ main {
   transition: background 0.15s;
 }
 
-.board-controls button:hover {
+.board-controls > button:hover {
   background: var(--accent);
 }
 
@@ -129,9 +167,51 @@ main {
   color: #ffd6e0;
 }
 
-.board-controls button:disabled {
+.board-controls > button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ── Move list ── */
+.moves-section {
+  background: var(--bg-surface);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.move-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.move-pair {
+  display: inline;
+}
+
+.move-num {
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+
+.move-san {
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.1s;
+}
+
+.move-san:hover {
+  background: var(--accent);
+}
+
+.move-san.active {
+  background: var(--accent-bright);
+  color: #fff;
 }
 
 /* ── Side panel ── */

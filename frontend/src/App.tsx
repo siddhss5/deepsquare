@@ -10,23 +10,20 @@ import './App.css'
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
+// ── Helpers ──
+
 function cleanCoaching(raw: string): string {
   let text = raw
-  // Fix tokenizer splitting contractions: "You 're" → "You're"
   text = text.replace(/ '/g, "'")
-  // Fix spaces before punctuation: "coordination ." → "coordination."
   text = text.replace(/ ([.,;:!?])/g, '$1')
-  // Clean {move notation}: strip all spaces inside (single move per brace pair)
   text = text.replace(/\{([^}]*)\}/g, (_, inner: string) => {
     const clean = inner.replace(/\s+/g, '')
     return `<code class="move">${clean}</code>`
   })
-  // Strip spaces inside [concept] and render as <strong>
   text = text.replace(/\[([^\]]*)\]/g, (_, inner) => {
     const clean = inner.replace(/\s+/g, ' ').trim()
     return `<strong>${clean}</strong>`
   })
-  // Clean up stray ** in case LLM still uses them
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   text = text.replace(/\*\*/g, '')
   return text
@@ -46,16 +43,78 @@ function turnColor(chess: Chess): 'white' | 'black' {
   return chess.turn() === 'w' ? 'white' : 'black'
 }
 
+// ── Types ──
+
 interface EngineData {
   eval: number
   top_lines: { moves: string; eval: number }[]
 }
 
+interface HistoryEntry {
+  fen: string
+  lastMove?: [Key, Key]
+  san?: string
+}
+
+// ── Components ──
+
+function MoveList({ history, currentIndex, onJump }: {
+  history: HistoryEntry[]
+  currentIndex: number
+  onJump: (index: number) => void
+}) {
+  const moves = history.slice(1) // skip starting position
+  if (moves.length === 0) return null
+
+  const pairs: { num: number; white: { san: string; idx: number }; black?: { san: string; idx: number } }[] = []
+  for (let i = 0; i < moves.length; i += 2) {
+    pairs.push({
+      num: Math.floor(i / 2) + 1,
+      white: { san: moves[i].san ?? '?', idx: i + 1 },
+      black: moves[i + 1] ? { san: moves[i + 1].san ?? '?', idx: i + 2 } : undefined,
+    })
+  }
+
+  return (
+    <section className="moves-section">
+      <h3>Moves</h3>
+      <div className="move-list">
+        {pairs.map(p => (
+          <span key={p.num} className="move-pair">
+            <span className="move-num">{p.num}.</span>
+            <span
+              className={`move-san ${p.white.idx === currentIndex ? 'active' : ''}`}
+              onClick={() => onJump(p.white.idx)}
+            >{p.white.san}</span>
+            {p.black != null && (
+              <span
+                className={`move-san ${p.black.idx === currentIndex ? 'active' : ''}`}
+                onClick={() => onJump(p.black!.idx)}
+              >{p.black.san}</span>
+            )}
+          </span>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+// ── App ──
+
 function App() {
   const boardRef = useRef<HTMLDivElement>(null)
   const cgRef = useRef<Api | null>(null)
   const chessRef = useRef(new Chess())
-  const [fen, setFen] = useState(START_FEN)
+
+  // History
+  const [history, setHistory] = useState<HistoryEntry[]>([{ fen: START_FEN }])
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  // Derived FEN from history
+  const currentFen = history[currentIndex].fen
+  const atLatest = currentIndex === history.length - 1
+
+  // Engine / coaching
   const [engineData, setEngineData] = useState<EngineData | null>(null)
   const [coaching, setCoaching] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -68,8 +127,29 @@ function App() {
   const evalClamped = Math.max(-5, Math.min(5, evalValue))
   const whitePct = 50 + (evalClamped / 5) * 50
 
-  // Engine-only fetch (fast, runs on every move)
-  const fetchEngine = useCallback(async (fenToAnalyze: string) => {
+  // ── Board sync ──
+
+  const showPosition = useCallback((entry: HistoryEntry, allowMoves: boolean) => {
+    const chess = new Chess(entry.fen)
+    chessRef.current = chess
+    cgRef.current?.set({
+      fen: entry.fen,
+      turnColor: turnColor(chess),
+      check: chess.isCheck() ? turnColor(chess) : false,
+      lastMove: entry.lastMove,
+      movable: allowMoves ? {
+        color: turnColor(chess),
+        dests: toDests(chess),
+      } : {
+        color: undefined,
+        dests: undefined,
+      },
+    })
+  }, [])
+
+  // ── Fetchers ──
+
+  const fetchEngine = useCallback(async (fen: string) => {
     engineAbortRef.current?.abort()
     const controller = new AbortController()
     engineAbortRef.current = controller
@@ -78,7 +158,7 @@ function App() {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fen: fenToAnalyze }),
+        body: JSON.stringify({ fen }),
         signal: controller.signal,
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -92,48 +172,36 @@ function App() {
     }
   }, [])
 
-  // Coaching fetch (streams LLM response, on-demand only)
-  const fetchCoaching = useCallback(async (fenToCoach: string, engine: EngineData) => {
+  const fetchCoaching = useCallback(async (fen: string, engine: EngineData) => {
     coachAbortRef.current?.abort()
     const controller = new AbortController()
     coachAbortRef.current = controller
     setCoachLoading(true)
     setCoaching('')
-
     try {
       const res = await fetch('/api/coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fen: fenToCoach,
-          engine_eval: engine.eval,
-          top_lines: engine.top_lines,
-        }),
+        body: JSON.stringify({ fen, engine_eval: engine.eval, top_lines: engine.top_lines }),
         signal: controller.signal,
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No response body')
-
       const decoder = new TextDecoder()
       let buffer = ''
       let coachingText = ''
       let currentEvent = ''
-
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
         buffer = lines.pop() ?? ''
-
         for (const line of lines) {
           if (line.startsWith('event:')) {
             currentEvent = line.slice(6).trim()
           } else if (line.startsWith('data:')) {
-            // SSE spec: "data:" or "data: " — strip the field name and optional space
             const data = line.startsWith('data: ') ? line.slice(6) : line.slice(5)
             if (currentEvent === 'coaching') {
               coachingText += data
@@ -150,39 +218,15 @@ function App() {
     }
   }, [])
 
-  const updateAfterMove = useCallback((chess: Chess, lastMove?: [Key, Key]) => {
-    setFen(chess.fen())
-    cgRef.current?.set({
-      turnColor: turnColor(chess),
-      check: chess.isCheck() ? turnColor(chess) : false,
-      movable: {
-        color: turnColor(chess),
-        dests: toDests(chess),
-      },
-      lastMove,
-    })
-  }, [])
+  // ── Auto-analyze on position change ──
 
-  const setPosition = useCallback((chess: Chess) => {
-    setFen(chess.fen())
-    cgRef.current?.set({
-      fen: chess.fen(),
-      turnColor: turnColor(chess),
-      check: chess.isCheck() ? turnColor(chess) : false,
-      movable: {
-        color: turnColor(chess),
-        dests: toDests(chess),
-      },
-      lastMove: undefined,
-    })
-  }, [])
-
-  // Auto-run engine when FEN changes while analyzing
   useEffect(() => {
     if (analyzing) {
-      fetchEngine(fen)
+      fetchEngine(currentFen)
     }
-  }, [fen, analyzing, fetchEngine])
+  }, [currentFen, analyzing, fetchEngine])
+
+  // ── Init chessground ──
 
   useEffect(() => {
     if (!boardRef.current || cgRef.current) return
@@ -201,20 +245,100 @@ function App() {
             const chess = chessRef.current
             const move = chess.move({ from: orig, to: dest, promotion: 'q' })
             if (move) {
-              updateAfterMove(chess, [orig, dest])
+              const newEntry: HistoryEntry = {
+                fen: chess.fen(),
+                lastMove: [orig, dest],
+                san: move.san,
+              }
+              setHistory(prev => {
+                // Get current index from prev length context — we always
+                // append at the latest when making a move
+                const sliced = prev.slice(0, prev.length)
+                return [...sliced, newEntry]
+              })
+              setCurrentIndex(prev => prev + 1)
+              cgRef.current?.set({
+                turnColor: turnColor(chess),
+                check: chess.isCheck() ? turnColor(chess) : false,
+                movable: {
+                  color: turnColor(chess),
+                  dests: toDests(chess),
+                },
+                lastMove: [orig, dest],
+              })
             }
           },
         },
       },
     })
-  }, [updateAfterMove])
+  }, [])
+
+  // ── Navigation ──
+
+  const navigateTo = useCallback((index: number) => {
+    const clamped = Math.max(0, Math.min(index, history.length - 1))
+    setCurrentIndex(clamped)
+    const entry = history[clamped]
+    const isLatest = clamped === history.length - 1
+    showPosition(entry, isLatest)
+  }, [history, showPosition])
+
+  const goStart = useCallback(() => navigateTo(0), [navigateTo])
+  const goBack = useCallback(() => navigateTo(currentIndex - 1), [navigateTo, currentIndex])
+  const goForward = useCallback(() => navigateTo(currentIndex + 1), [navigateTo, currentIndex])
+  const goEnd = useCallback(() => navigateTo(history.length - 1), [navigateTo, history.length])
+
+  // When a move is made while viewing a past position, we need to handle it:
+  // The move handler always appends. But if we're viewing a past position,
+  // we need to truncate forward history first and jump to the end.
+  // We do this by jumping to the end before allowing moves.
+  // When currentIndex changes and we're not at latest, disable moves.
+  useEffect(() => {
+    if (!cgRef.current) return
+    if (atLatest) {
+      const chess = chessRef.current
+      cgRef.current.set({
+        movable: {
+          color: turnColor(chess),
+          dests: toDests(chess),
+        },
+      })
+    } else {
+      cgRef.current.set({
+        movable: {
+          color: undefined,
+          dests: undefined,
+        },
+      })
+    }
+  }, [atLatest])
+
+  // Handle making a move when not at latest: jump to end first, truncate
+  // Actually, simpler: only allow moves at latest position (handled above)
+  // If user wants to play from a past position, they need to go to end first.
+  // TODO: Could truncate and allow, but for now this matches Lichess behavior.
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement) return
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goBack() }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); goForward() }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [goBack, goForward])
+
+  // ── Handlers ──
 
   const handleFenChange = (newFen: string) => {
-    setFen(newFen)
     try {
       const chess = new Chess(newFen)
       chessRef.current = chess
-      setPosition(chess)
+      const entry: HistoryEntry = { fen: newFen }
+      setHistory([entry])
+      setCurrentIndex(0)
+      showPosition(entry, true)
     } catch {
       // invalid FEN
     }
@@ -235,15 +359,17 @@ function App() {
   }
 
   const handleCoachMe = () => {
-    if (engineData) fetchCoaching(fen, engineData)
+    if (engineData) fetchCoaching(currentFen, engineData)
   }
 
   const handleReset = () => {
     const chess = new Chess()
     chessRef.current = chess
+    setHistory([{ fen: START_FEN }])
+    setCurrentIndex(0)
     setEngineData(null)
     setCoaching('')
-    setPosition(chess)
+    showPosition({ fen: START_FEN }, true)
   }
 
   const hasEngine = engineData !== null
@@ -271,6 +397,12 @@ function App() {
             <div ref={boardRef} className="board" />
           </div>
           <div className="board-controls">
+            <div className="nav-buttons">
+              <button onClick={goStart} disabled={currentIndex === 0} title="Start">⟨⟨</button>
+              <button onClick={goBack} disabled={currentIndex === 0} title="Back">⟨</button>
+              <button onClick={goForward} disabled={atLatest} title="Forward">⟩</button>
+              <button onClick={goEnd} disabled={atLatest} title="End">⟩⟩</button>
+            </div>
             <button onClick={handleReset}>Reset</button>
             <button
               className={analyzing ? 'btn-stop' : 'btn-analyze'}
@@ -282,6 +414,8 @@ function App() {
         </div>
 
         <div className="side-panel">
+          <MoveList history={history} currentIndex={currentIndex} onJump={navigateTo} />
+
           <section className="coaching-section">
             <div className="coaching-header">
               <h3>Coach {coachLoading && <span className="loading-dot" />}</h3>
@@ -336,7 +470,7 @@ function App() {
               FEN
               <input
                 type="text"
-                value={fen}
+                value={currentFen}
                 onChange={(e) => handleFenChange(e.target.value)}
                 spellCheck={false}
               />
