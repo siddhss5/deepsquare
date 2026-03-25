@@ -3,6 +3,7 @@ import { Chessground } from 'chessground'
 import { Chess } from 'chess.js'
 import type { Api } from 'chessground/api'
 import type { Key } from 'chessground/types'
+import { Settings, loadSettings, type LLMSettings } from './Settings'
 import 'chessground/assets/chessground.base.css'
 import 'chessground/assets/chessground.brown.css'
 import 'chessground/assets/chessground.cburnett.css'
@@ -114,9 +115,15 @@ function App() {
   const currentFen = history[currentIndex].fen
   const atLatest = currentIndex === history.length - 1
 
+  // Settings
+  const [settings, setSettings] = useState<LLMSettings>(loadSettings)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
   // Engine / coaching
   const [engineData, setEngineData] = useState<EngineData | null>(null)
   const [coaching, setCoaching] = useState('')
+  const [engineError, setEngineError] = useState('')
+  const [coachError, setCoachError] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [engineLoading, setEngineLoading] = useState(false)
   const [coachLoading, setCoachLoading] = useState(false)
@@ -154,6 +161,7 @@ function App() {
     const controller = new AbortController()
     engineAbortRef.current = controller
     setEngineLoading(true)
+    setEngineError('')
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -161,27 +169,43 @@ function App() {
         body: JSON.stringify({ fen }),
         signal: controller.signal,
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error ?? `Engine returned HTTP ${res.status}`)
+      }
       const data: EngineData = await res.json()
       setEngineData(data)
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
-      console.error('Engine analysis failed:', err)
+      setEngineError(err instanceof Error ? err.message : 'Engine analysis failed.')
     } finally {
       setEngineLoading(false)
     }
   }, [])
 
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
+
   const fetchCoaching = useCallback(async (fen: string, engine: EngineData) => {
+    const s = settingsRef.current
+    if (!s.apiKey) {
+      setCoachError('Set your API key in Settings to use the coach.')
+      return
+    }
     coachAbortRef.current?.abort()
     const controller = new AbortController()
     coachAbortRef.current = controller
     setCoachLoading(true)
     setCoaching('')
+    setCoachError('')
     try {
       const res = await fetch('/api/coach', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': s.apiKey,
+          'X-LLM-Model': s.model,
+        },
         body: JSON.stringify({ fen, engine_eval: engine.eval, top_lines: engine.top_lines }),
         signal: controller.signal,
       })
@@ -206,13 +230,15 @@ function App() {
             if (currentEvent === 'coaching') {
               coachingText += data
               setCoaching(coachingText)
+            } else if (currentEvent === 'error') {
+              setCoachError(data)
             }
           }
         }
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
-      console.error('Coaching failed:', err)
+      setCoachError(err instanceof Error ? err.message : 'Coaching request failed.')
     } finally {
       setCoachLoading(false)
     }
@@ -353,6 +379,8 @@ function App() {
       setCoachLoading(false)
       setEngineData(null)
       setCoaching('')
+      setEngineError('')
+      setCoachError('')
     } else {
       setAnalyzing(true)
     }
@@ -369,16 +397,29 @@ function App() {
     setCurrentIndex(0)
     setEngineData(null)
     setCoaching('')
+    setEngineError('')
+    setCoachError('')
     showPosition({ fen: START_FEN }, true)
   }
 
   const hasEngine = engineData !== null
+  const hasKey = settings.apiKey.length > 0
 
   return (
     <div className="app">
       <header>
         <h1>DeepSquare</h1>
+        <button className="btn-settings" onClick={() => setSettingsOpen(true)} title="Settings">
+          ⚙
+        </button>
       </header>
+
+      <Settings
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        settings={settings}
+        onSave={setSettings}
+      />
 
       <main>
         <div className="board-column">
@@ -423,22 +464,27 @@ function App() {
                 <button
                   className="btn-coach"
                   onClick={handleCoachMe}
-                  disabled={coachLoading}
+                  disabled={coachLoading || !hasKey || !hasEngine}
+                  title={!hasKey ? 'Set your API key in Settings' : undefined}
                 >
                   {coachLoading ? 'Thinking...' : 'Coach me'}
                 </button>
               )}
             </div>
             <div className="coaching-body">
-              {coaching ? (
+              {coachError ? (
+                <p className="error-msg">{coachError}</p>
+              ) : coaching ? (
                 <p dangerouslySetInnerHTML={{
                   __html: cleanCoaching(coaching)
                 }} />
               ) : (
                 <p className="placeholder">
-                  {analyzing
-                    ? 'Click "Coach me" for position advice.'
-                    : 'Click Analyze to start engine analysis.'}
+                  {!hasKey
+                    ? 'Set your API key in ⚙ Settings to use the coach.'
+                    : analyzing
+                      ? 'Click "Coach me" for position advice.'
+                      : 'Click Analyze to start engine analysis.'}
                 </p>
               )}
             </div>
@@ -447,7 +493,9 @@ function App() {
           <section className="engine-section">
             <h3>Engine lines {engineLoading && <span className="loading-dot" />}</h3>
             <div className="engine-body">
-              {hasEngine ? (
+              {engineError ? (
+                <div className="error-msg">{engineError}</div>
+              ) : hasEngine ? (
                 engineData.top_lines.map((line, i) => (
                   <div key={i} className={`line ${engineLoading ? 'is-stale' : ''}`}>
                     <span className="line-eval">
