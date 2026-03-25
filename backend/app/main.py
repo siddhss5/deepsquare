@@ -1,8 +1,20 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-app = FastAPI(title="DeepSquare")
+from app import engine
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    engine.start()
+    yield
+    engine.stop()
+
+
+app = FastAPI(title="DeepSquare", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,7 +26,8 @@ app.add_middleware(
 
 class AnalyzeRequest(BaseModel):
     fen: str
-    depth: int = 20
+    time_limit: float = 1.0  # seconds for Stockfish to think
+    num_lines: int = 3
 
 
 class EngineLine(BaseModel):
@@ -35,12 +48,9 @@ def health():
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 def analyze(req: AnalyzeRequest):
-    # Dummy response — will be replaced with Stockfish + LLM in Phase 2/3
+    result = engine.analyze(req.fen, time_limit=req.time_limit, num_lines=req.num_lines)
     return AnalyzeResponse(
-        eval=0.3,
-        top_lines=[
-            EngineLine(moves="e4 e5 Nf3 Nc6", eval=0.3),
-            EngineLine(moves="d4 d5 c4", eval=0.2),
-        ],
-        coaching="This is a dummy response. Stockfish and LLM integration coming soon.",
+        eval=result.eval,
+        top_lines=[EngineLine(moves=l.moves, eval=l.eval) for l in result.top_lines],
+        coaching="Stockfish analysis complete. LLM coaching coming in Phase 3.",
     )
