@@ -3,8 +3,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sse_starlette.sse import EventSourceResponse
 
 from app import engine
+from app.coach import EngineInput, stream_coaching
 
 
 @asynccontextmanager
@@ -26,7 +28,7 @@ app.add_middleware(
 
 class AnalyzeRequest(BaseModel):
     fen: str
-    time_limit: float = 1.0  # seconds for Stockfish to think
+    time_limit: float = 1.0
     num_lines: int = 3
 
 
@@ -38,7 +40,6 @@ class EngineLine(BaseModel):
 class AnalyzeResponse(BaseModel):
     eval: float
     top_lines: list[EngineLine]
-    coaching: str
 
 
 @app.get("/health")
@@ -52,5 +53,26 @@ def analyze(req: AnalyzeRequest):
     return AnalyzeResponse(
         eval=result.eval,
         top_lines=[EngineLine(moves=l.moves, eval=l.eval) for l in result.top_lines],
-        coaching="Stockfish analysis complete. LLM coaching coming in Phase 3.",
     )
+
+
+class CoachRequest(BaseModel):
+    fen: str
+    engine_eval: float
+    top_lines: list[EngineLine]
+
+
+@app.post("/coach")
+async def coach(req: CoachRequest):
+    """SSE endpoint: accepts engine data from frontend, streams coaching tokens."""
+    engine_input = EngineInput(
+        eval=req.engine_eval,
+        top_lines=[{"moves": l.moves, "eval": l.eval} for l in req.top_lines],
+    )
+
+    def event_generator():
+        for token in stream_coaching(req.fen, engine_input):
+            yield {"event": "coaching", "data": token}
+        yield {"event": "done", "data": ""}
+
+    return EventSourceResponse(event_generator())
