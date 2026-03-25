@@ -58,11 +58,31 @@ def _build_user_message(fen: str, engine: EngineInput) -> str:
     )
 
 
-def stream_coaching(fen: str, engine: EngineInput) -> Generator[str, None, None]:
+def _resolve_model(model: str | None) -> str:
+    """Resolve LLM model: request param > env var > default."""
+    return model or os.environ.get("LLM_MODEL", "claude-haiku-4-5-20251001")
+
+
+def _resolve_api_key(api_key: str | None) -> str | None:
+    """Resolve API key: request param > env var."""
+    return api_key or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")
+
+
+def stream_coaching(
+    fen: str,
+    engine: EngineInput,
+    api_key: str | None = None,
+    model: str | None = None,
+) -> Generator[str, None, None]:
     """Stream coaching response token by token."""
-    model = os.environ.get("LLM_MODEL", "claude-haiku-4-5-20251001")
+    resolved_model = _resolve_model(model)
+    resolved_key = _resolve_api_key(api_key)
+
+    if not resolved_key:
+        raise ValueError("No API key provided. Set your key in Settings or in the server .env file.")
+
     response = litellm.completion(
-        model=model,
+        model=resolved_model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": _build_user_message(fen, engine)},
@@ -70,6 +90,7 @@ def stream_coaching(fen: str, engine: EngineInput) -> Generator[str, None, None]
         max_tokens=500,
         temperature=0.7,
         stream=True,
+        api_key=resolved_key,
     )
     for chunk in response:
         delta = chunk.choices[0].delta.content
