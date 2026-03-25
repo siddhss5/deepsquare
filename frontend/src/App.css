@@ -1,0 +1,172 @@
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+header h1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: var(--accent-bright);
+}
+
+main {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+/* Board */
+.board-panel {
+  flex-shrink: 0;
+}
+
+.board {
+  --board-size: min(480px, calc(100vw - 32px));
+  width: var(--board-size);
+  height: var(--board-size);
+}
+
+.board-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.board-controls button {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.board-controls button:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.board-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Analysis panel */
+.analysis-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+.fen-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.fen-label input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.fen-label input:focus {
+  outline: none;
+  border-color: var(--accent-bright);
+}
+
+.analysis-result {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.eval {
+  font-size: 24px;
+  font-family: var(--mono);
+}
+
+.top-lines h3,
+.coaching h3 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.line {
+  display: flex;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--bg-surface);
+  font-family: var(--mono);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.line-eval {
+  font-weight: 600;
+  min-width: 48px;
+}
+
+.coaching p {
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+/* Mobile */
+@media (max-width: 700px) {
+  .app {
+    padding: 16px 12px;
+  }
+
+  header h1 {
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+
+  main {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .board-panel {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .board-controls {
+    width: var(--board-size);
+  }
+
+  .fen-label input {
+    font-size: 11px;
+  }
+
+  .eval {
+    font-size: 20px;
+  }
+
+  .line {
+    font-size: 12px;
+  }
+}
