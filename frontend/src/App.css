@@ -1,0 +1,617 @@
+/* ── App shell ── */
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent-bright);
+  letter-spacing: -0.5px;
+}
+
+.btn-settings {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-settings:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+/* ── Main layout ── */
+main {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* ── Board column ── */
+.board-column {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.board-wrapper {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.board {
+  --board-size: min(480px, calc(100vw - 80px));
+  width: var(--board-size);
+  height: var(--board-size);
+}
+
+/* ── Eval bar ──
+   Always rendered to prevent layout shift.
+   Vertical on desktop (left of board), horizontal on mobile (above board). */
+.eval-bar {
+  width: 24px;
+  border-radius: 4px;
+  background: var(--border);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.eval-bar-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--white-pct, 50%);
+  background: #e8e8e8;
+  transition: height 0.4s ease;
+}
+
+.eval-bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--text);
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+  z-index: 1;
+  mix-blend-mode: difference;
+}
+
+/* ── Board controls ── */
+.board-controls {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  width: 100%;
+  max-width: var(--board-size);
+  align-items: center;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 2px;
+}
+
+.nav-buttons button {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.nav-buttons button:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.nav-buttons button:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.nav-buttons button:not(:first-child):not(:last-child) {
+  border-radius: 0;
+}
+
+.nav-buttons button:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--text);
+}
+
+.nav-buttons button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.board-controls > button {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.board-controls > button:hover {
+  background: var(--accent);
+}
+
+.board-controls .btn-analyze {
+  border-color: #2d6a4f;
+  color: #52b788;
+}
+
+.board-controls .btn-analyze:hover {
+  background: #2d6a4f;
+  color: #d8f3dc;
+}
+
+.board-controls .btn-stop {
+  border-color: #6b2039;
+  color: #e94560;
+}
+
+.board-controls .btn-stop:hover {
+  background: #6b2039;
+  color: #ffd6e0;
+}
+
+.board-controls > button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Move list ── */
+.moves-section {
+  background: var(--bg-surface);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.move-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.move-pair {
+  display: inline;
+}
+
+.move-num {
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+
+.move-san {
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.1s;
+}
+
+.move-san:hover {
+  background: var(--accent);
+}
+
+.move-san.active {
+  background: var(--accent-bright);
+  color: #fff;
+}
+
+/* ── Side panel ── */
+.side-panel {
+  flex: 1;
+  min-width: 0;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.side-panel section h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* ── Coaching section ── */
+.coaching-section {
+  background: var(--bg-surface);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.coaching-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.coaching-header h3 {
+  margin-bottom: 0;
+}
+
+.btn-coach {
+  padding: 5px 12px;
+  border: 1px solid #2d6a4f;
+  border-radius: 5px;
+  background: transparent;
+  color: #52b788;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-coach:hover:not(:disabled) {
+  background: #2d6a4f;
+  color: #d8f3dc;
+}
+
+.btn-coach:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.coaching-body p {
+  line-height: 1.65;
+  font-size: 15px;
+  color: var(--text);
+}
+
+code.move {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(233, 69, 96, 0.12);
+  color: var(--accent-bright);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.coaching-body p.placeholder {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.coaching-body p.is-stale {
+  opacity: 0.5;
+}
+
+/* ── Engine lines ── */
+.engine-section {
+  background: var(--bg-surface);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.line {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.line + .line {
+  border-top: 1px solid var(--border);
+}
+
+.line-eval {
+  font-weight: 700;
+  min-width: 40px;
+  color: var(--text);
+}
+
+.line-moves {
+  color: var(--text-muted);
+}
+
+.line.placeholder {
+  color: var(--text-muted);
+}
+
+.line.placeholder .line-eval {
+  color: var(--text-muted);
+}
+
+.line.is-stale {
+  opacity: 0.5;
+}
+
+/* ── Loading indicator ── */
+.loading-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-bright);
+  margin-left: 4px;
+  vertical-align: middle;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* ── FEN input ── */
+.fen-section {
+  margin-top: auto;
+}
+
+.fen-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.fen-label input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.fen-label input:focus {
+  outline: none;
+  border-color: var(--accent-bright);
+}
+
+/* ── Error messages ── */
+.error-msg {
+  color: var(--accent-bright);
+  font-size: 13px;
+  padding: 8px 12px;
+  background: rgba(233, 69, 96, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(233, 69, 96, 0.25);
+}
+
+/* ── Settings modal ── */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.settings-modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.settings-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.settings-close:hover {
+  color: var(--text);
+}
+
+.settings-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.settings-field select,
+.settings-field input {
+  margin-top: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+.settings-field select:focus,
+.settings-field input:focus {
+  outline: none;
+  border-color: var(--accent-bright);
+}
+
+.settings-hint {
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.settings-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-settings-save {
+  padding: 8px 20px;
+  border: 1px solid #2d6a4f;
+  border-radius: 6px;
+  background: #2d6a4f;
+  color: #d8f3dc;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-settings-save:hover {
+  opacity: 0.85;
+}
+
+/* ── Mobile ── */
+@media (max-width: 700px) {
+  .app {
+    padding: 12px;
+  }
+
+  header {
+    margin-bottom: 12px;
+  }
+
+  header h1 {
+    font-size: 20px;
+  }
+
+  main {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .board-column {
+    width: 100%;
+    align-items: center;
+  }
+
+  .board-wrapper {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .board {
+    --board-size: calc(100vw - 24px);
+    max-width: 480px;
+  }
+
+  /* Horizontal eval bar on mobile */
+  .eval-bar {
+    width: var(--board-size);
+    max-width: 480px;
+    height: 20px;
+  }
+
+  .eval-bar-fill {
+    height: 100%;
+    width: var(--white-pct, 50%);
+    bottom: auto;
+    top: 0;
+    left: 0;
+    right: auto;
+    transition: width 0.4s ease;
+  }
+
+  .eval-bar-label {
+    writing-mode: horizontal-tb;
+    font-size: 10px;
+  }
+
+  .board-controls {
+    max-width: 480px;
+    width: var(--board-size);
+  }
+
+  .side-panel {
+    width: var(--board-size);
+    max-width: 480px;
+  }
+
+  .coaching-body p {
+    font-size: 14px;
+  }
+}
