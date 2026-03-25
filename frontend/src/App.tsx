@@ -36,14 +36,40 @@ function App() {
   const chessRef = useRef(new Chess())
   const [fen, setFen] = useState(START_FEN)
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
+  const [analyzing, setAnalyzing] = useState(false)
   const [loading, setLoading] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
 
   const evalValue = analysis?.eval ?? 0
   const evalClamped = Math.max(-5, Math.min(5, evalValue))
   const whitePct = 50 + (evalClamped / 5) * 50
 
+  const fetchAnalysis = useCallback(async (fenToAnalyze: string) => {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    setLoading(true)
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fen: fenToAnalyze }),
+        signal: controller.signal,
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data: AnalysisResult = await res.json()
+      setAnalysis(data)
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      console.error('Analysis failed:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   const updateAfterMove = useCallback((chess: Chess, lastMove?: [Key, Key]) => {
-    setFen(chess.fen())
+    const newFen = chess.fen()
+    setFen(newFen)
     cgRef.current?.set({
       turnColor: turnColor(chess),
       check: chess.isCheck() ? turnColor(chess) : false,
@@ -56,9 +82,10 @@ function App() {
   }, [])
 
   const setPosition = useCallback((chess: Chess) => {
-    setFen(chess.fen())
+    const newFen = chess.fen()
+    setFen(newFen)
     cgRef.current?.set({
-      fen: chess.fen(),
+      fen: newFen,
       turnColor: turnColor(chess),
       check: chess.isCheck() ? turnColor(chess) : false,
       movable: {
@@ -68,6 +95,13 @@ function App() {
       lastMove: undefined,
     })
   }, [])
+
+  // Auto-analyze when FEN changes while in analyzing mode
+  useEffect(() => {
+    if (analyzing) {
+      fetchAnalysis(fen)
+    }
+  }, [fen, analyzing, fetchAnalysis])
 
   useEffect(() => {
     if (!boardRef.current || cgRef.current) return
@@ -105,21 +139,15 @@ function App() {
     }
   }
 
-  const handleAnalyze = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fen, depth: 20 }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data: AnalysisResult = await res.json()
-      setAnalysis(data)
-    } catch (err) {
-      console.error('Analysis failed:', err)
-    } finally {
+  const handleToggleAnalysis = () => {
+    if (analyzing) {
+      abortRef.current?.abort()
+      setAnalyzing(false)
       setLoading(false)
+      setAnalysis(null)
+    } else {
+      setAnalyzing(true)
+      // The useEffect on [fen, analyzing] will trigger the first analysis
     }
   }
 
@@ -128,6 +156,7 @@ function App() {
     chessRef.current = chess
     setAnalysis(null)
     setPosition(chess)
+    // If analyzing, the useEffect will auto-analyze the new position
   }
 
   const hasAnalysis = analysis !== null
@@ -156,8 +185,11 @@ function App() {
           </div>
           <div className="board-controls">
             <button onClick={handleReset}>Reset</button>
-            <button onClick={handleAnalyze} disabled={loading}>
-              {loading ? 'Analyzing...' : 'Analyze'}
+            <button
+              className={analyzing ? 'btn-stop' : 'btn-analyze'}
+              onClick={handleToggleAnalysis}
+            >
+              {analyzing ? 'Stop' : 'Analyze'}
             </button>
           </div>
         </div>
@@ -165,21 +197,21 @@ function App() {
         <div className="side-panel">
           <section className="coaching-section">
             <h3>Coach</h3>
-            <div className={`coaching-body ${loading && !hasAnalysis ? 'is-loading' : ''}`}>
+            <div className="coaching-body">
               {hasAnalysis ? (
                 <p className={loading ? 'is-stale' : ''}>{analysis.coaching}</p>
               ) : (
                 <p className="placeholder">
                   {loading
                     ? 'Thinking...'
-                    : 'Set up a position and click Analyze to get coaching.'}
+                    : 'Click Analyze to start engine analysis.'}
                 </p>
               )}
             </div>
           </section>
 
           <section className="engine-section">
-            <h3>Engine lines</h3>
+            <h3>Engine lines {loading && <span className="loading-dot" />}</h3>
             <div className="engine-body">
               {hasAnalysis ? (
                 analysis.top_lines.map((line, i) => (

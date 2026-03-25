@@ -105,8 +105,28 @@ main {
   transition: background 0.15s;
 }
 
-.board-controls button:hover:not(:disabled) {
+.board-controls button:hover {
   background: var(--accent);
+}
+
+.board-controls .btn-analyze {
+  border-color: #2d6a4f;
+  color: #52b788;
+}
+
+.board-controls .btn-analyze:hover {
+  background: #2d6a4f;
+  color: #d8f3dc;
+}
+
+.board-controls .btn-stop {
+  border-color: #6b2039;
+  color: #e94560;
+}
+
+.board-controls .btn-stop:hover {
+  background: #6b2039;
+  color: #ffd6e0;
 }
 
 .board-controls button:disabled {
@@ -194,6 +214,23 @@ main {
 
 .line.is-stale {
   opacity: 0.5;
+}
+
+/* ── Loading indicator ── */
+.loading-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-bright);
+  margin-left: 4px;
+  vertical-align: middle;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
 }
 
 /* ── FEN input ── */
