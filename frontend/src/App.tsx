@@ -10,9 +10,7 @@ import 'chessground/assets/chessground.cburnett.css'
 import './App.css'
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
-// Match [FEN: ...] or bare "FEN: ..." on its own line
-// Reserved for future position database feature
-// const FEN_MARKER_RE = /\[FEN:\s*([^\]]+)\]/
+const POSITION_MARKER_RE = /\[POSITION:\s*([^\]]+)\]/
 
 // ── Helpers ──
 
@@ -20,8 +18,8 @@ const MOVE_RE = /(?<![a-zA-Z])([KQRBN][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?|
 
 function formatCoachText(raw: string): string {
   let text = raw
-  // Strip FEN markers from display text
-  text = text.replace(/\[FEN:\s*[^\]]+\]/g, '').replace(/(?:^|\n)FEN:\s*.+/g, '').trim()
+  // Strip position markers from display text
+  text = text.replace(/\[POSITION:\s*[^\]]+\]/g, '').trim()
   // Fix tokenizer artifacts
   text = text.replace(/ '/g, "'")
   text = text.replace(/ ([.,;:!?])/g, '$1')
@@ -77,6 +75,7 @@ interface HistoryEntry {
 interface ChatMsg {
   role: 'user' | 'assistant'
   text: string
+  positionName?: string  // if a position was loaded
 }
 
 // ── Components ──
@@ -147,6 +146,9 @@ function ChatMessages({ messages, streaming }: { messages: ChatMsg[]; streaming:
           ) : (
             <>
               <p dangerouslySetInnerHTML={{ __html: formatCoachText(msg.text) }} />
+              {msg.positionName && (
+                <div className="chat-position-loaded">Board set: {msg.positionName}</div>
+              )}
             </>
           )}
         </div>
@@ -216,6 +218,27 @@ function App() {
     })
   }, [])
 
+  const setBoardFromFen = useCallback((fen: string) => {
+    try {
+      const chess = new Chess(fen)
+      chessRef.current = chess
+      const entry: HistoryEntry = { fen: chess.fen() }
+      setHistory([entry])
+      setCurrentIndex(0)
+      cgRef.current?.set({
+        fen: chess.fen(),
+        turnColor: turnColor(chess),
+        check: chess.isCheck() ? turnColor(chess) : false,
+        lastMove: undefined,
+        movable: {
+          color: turnColor(chess),
+          dests: toDests(chess),
+        },
+      })
+    } catch {
+      // invalid FEN
+    }
+  }, [])
 
   // ── Fetchers ──
 
@@ -320,11 +343,30 @@ function App() {
 
       // Streaming done — finalize message
       if (fullText) {
-        // Check for FEN marker
+        const posMatch = fullText.match(POSITION_MARKER_RE)
         const assistantMsg: ChatMsg = {
           role: 'assistant',
           text: fullText,
         }
+
+        if (posMatch) {
+          // Search for the position
+          const query = posMatch[1].trim()
+          try {
+            const searchRes = await fetch(`/api/positions/search?q=${encodeURIComponent(query)}`, {
+              signal: controller.signal,
+            })
+            if (searchRes.ok) {
+              const results = await searchRes.json()
+              if (results.length > 0) {
+                const pos = results[0]
+                assistantMsg.positionName = pos.name
+                setBoardFromFen(pos.fen)
+              }
+            }
+          } catch { /* search failed — no big deal, just don't set the board */ }
+        }
+
         setChatMessages(prev => [...prev, assistantMsg])
         setStreaming('')
       }

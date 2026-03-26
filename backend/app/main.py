@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
-from app import engine
+from app import engine, positions
 from app.coach import ChatMessage, EngineInput, stream_chat
 
 
@@ -64,6 +64,16 @@ class ChatRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/positions/search")
+async def search_positions(q: str):
+    """Search for chess positions by query."""
+    results = await positions.search(q)
+    return [
+        {"name": r.name, "description": r.description, "fen": r.fen, "source": r.source}
+        for r in results
+    ]
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
