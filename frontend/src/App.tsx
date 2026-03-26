@@ -10,43 +10,40 @@ import 'chessground/assets/chessground.cburnett.css'
 import './App.css'
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+// Match [FEN: ...] or bare "FEN: ..." on its own line
+// Reserved for future position database feature
+// const FEN_MARKER_RE = /\[FEN:\s*([^\]]+)\]/
 
 // ── Helpers ──
 
-// Chess move pattern: standard algebraic notation
-// Matches: e4, Nf3, Bxe5, O-O, O-O-O, Qxf7+, Rh8#, exd5, Nbd2, R1e1
 const MOVE_RE = /(?<![a-zA-Z])([KQRBN][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?|[a-h]x[a-h][1-8](?:=[QRBN])?[+#]?|[a-h][1-8][+#]?|O-O(?:-O)?[+#]?)(?![a-zA-Z])/g
 
-function cleanCoaching(raw: string): string {
+function formatCoachText(raw: string): string {
   let text = raw
-  // Fix tokenizer splitting contractions: "You 're" → "You're"
+  // Strip FEN markers from display text
+  text = text.replace(/\[FEN:\s*[^\]]+\]/g, '').replace(/(?:^|\n)FEN:\s*.+/g, '').trim()
+  // Fix tokenizer artifacts
   text = text.replace(/ '/g, "'")
-  // Fix spaces before punctuation: "coordination ." → "coordination."
   text = text.replace(/ ([.,;:!?])/g, '$1')
-
-  // Process explicit {move} markers: strip spaces inside
+  // Process {move} markers
   text = text.replace(/\{([^}]*)\}/g, (_, inner: string) => {
     const clean = inner.replace(/\s+/g, '')
     return `<code class="move">${clean}</code>`
   })
-  // Process [concept] markers
-  text = text.replace(/\[([^\]]*)\]/g, (_, inner) => {
+  // Process [concept] markers (but not [FEN:...])
+  text = text.replace(/\[(?!FEN:)([^\]]*)\]/g, (_, inner) => {
     const clean = inner.replace(/\s+/g, ' ').trim()
     return `<strong>${clean}</strong>`
   })
   // Clean up stray **
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   text = text.replace(/\*\*/g, '')
-
-  // Auto-detect unwrapped chess moves — run on the current text
-  // but skip content already inside <code> tags.
-  // Split by <code>...</code> segments, only process outside segments.
+  // Auto-detect unwrapped chess moves
   const parts = text.split(/(<code class="move">.*?<\/code>)/g)
   text = parts.map(part => {
     if (part.startsWith('<code class="move">')) return part
     return part.replace(MOVE_RE, (match) => `<code class="move">${match}</code>`)
   }).join('')
-
   return text
 }
 
@@ -77,6 +74,11 @@ interface HistoryEntry {
   san?: string
 }
 
+interface ChatMsg {
+  role: 'user' | 'assistant'
+  text: string
+}
+
 // ── Components ──
 
 function MoveList({ history, currentIndex, onJump }: {
@@ -84,7 +86,7 @@ function MoveList({ history, currentIndex, onJump }: {
   currentIndex: number
   onJump: (index: number) => void
 }) {
-  const moves = history.slice(1) // skip starting position
+  const moves = history.slice(1)
   if (moves.length === 0) return null
 
   const pairs: { num: number; white: { san: string; idx: number }; black?: { san: string; idx: number } }[] = []
@@ -120,6 +122,44 @@ function MoveList({ history, currentIndex, onJump }: {
   )
 }
 
+function ChatMessages({ messages, streaming }: { messages: ChatMsg[]; streaming: string }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages, streaming])
+
+  const hasContent = messages.length > 0 || streaming
+
+  return (
+    <div className="chat-messages" ref={scrollRef}>
+      {!hasContent && (
+        <div className="chat-empty">
+          Ask about the position, request a scenario, or click "Coach me" to get started.
+        </div>
+      )}
+      {messages.map((msg, i) => (
+        <div key={i} className={`chat-msg chat-${msg.role}`}>
+          {msg.role === 'user' ? (
+            <p>{msg.text}</p>
+          ) : (
+            <>
+              <p dangerouslySetInnerHTML={{ __html: formatCoachText(msg.text) }} />
+            </>
+          )}
+        </div>
+      ))}
+      {streaming && (
+        <div className="chat-msg chat-assistant">
+          <p dangerouslySetInnerHTML={{ __html: formatCoachText(streaming) }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── App ──
 
 function App() {
@@ -130,8 +170,6 @@ function App() {
   // History
   const [history, setHistory] = useState<HistoryEntry[]>([{ fen: START_FEN }])
   const [currentIndex, setCurrentIndex] = useState(0)
-
-  // Derived FEN from history
   const currentFen = history[currentIndex].fen
   const atLatest = currentIndex === history.length - 1
 
@@ -139,16 +177,20 @@ function App() {
   const [settings, setSettings] = useState<LLMSettings>(loadSettings)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  // Engine / coaching
+  // Engine
   const [engineData, setEngineData] = useState<EngineData | null>(null)
-  const [coaching, setCoaching] = useState('')
   const [engineError, setEngineError] = useState('')
-  const [coachError, setCoachError] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [engineLoading, setEngineLoading] = useState(false)
-  const [coachLoading, setCoachLoading] = useState(false)
   const engineAbortRef = useRef<AbortController | null>(null)
-  const coachAbortRef = useRef<AbortController | null>(null)
+
+  // Chat
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([])
+  const [streaming, setStreaming] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatError, setChatError] = useState('')
+  const [chatInput, setChatInput] = useState('')
+  const chatAbortRef = useRef<AbortController | null>(null)
 
   const evalValue = engineData?.eval ?? 0
   const evalClamped = Math.max(-5, Math.min(5, evalValue))
@@ -173,6 +215,7 @@ function App() {
       },
     })
   }, [])
+
 
   // ── Fetchers ──
 
@@ -206,36 +249,54 @@ function App() {
   const settingsRef = useRef(settings)
   settingsRef.current = settings
 
-  const fetchCoaching = useCallback(async (fen: string, engine: EngineData, moves: string[] = []) => {
+  const sendChat = useCallback(async (userText: string) => {
     const s = settingsRef.current
     if (!s.apiKey) {
-      setCoachError('Set your API key in Settings to use the coach.')
+      setChatError('Set your API key in Settings to use the coach.')
       return
     }
-    coachAbortRef.current?.abort()
+
+    const userMsg: ChatMsg = { role: 'user', text: userText }
+    setChatMessages(prev => [...prev, userMsg])
+    setChatInput('')
+
+    chatAbortRef.current?.abort()
     const controller = new AbortController()
-    coachAbortRef.current = controller
-    setCoachLoading(true)
-    setCoaching('')
-    setCoachError('')
+    chatAbortRef.current = controller
+    setChatLoading(true)
+    setStreaming('')
+    setChatError('')
+
+    // Build message history for API
+    const allMessages = [...chatMessages, userMsg]
+    const moves = history.slice(1, currentIndex + 1).map(h => h.san).filter(Boolean) as string[]
+
     try {
-      const res = await fetch('/api/coach', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': s.apiKey,
           'X-LLM-Model': s.model,
         },
-        body: JSON.stringify({ fen, engine_eval: engine.eval, top_lines: engine.top_lines, moves }),
+        body: JSON.stringify({
+          messages: allMessages.map(m => ({ role: m.role, text: m.text })),
+          fen: currentFen,
+          moves,
+          engine_eval: engineData?.eval ?? null,
+          top_lines: engineData?.top_lines ?? null,
+        }),
         signal: controller.signal,
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No response body')
       const decoder = new TextDecoder()
       let buffer = ''
-      let coachingText = ''
+      let fullText = ''
       let currentEvent = ''
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -247,22 +308,34 @@ function App() {
             currentEvent = line.slice(6).trim()
           } else if (line.startsWith('data:')) {
             const data = line.startsWith('data: ') ? line.slice(6) : line.slice(5)
-            if (currentEvent === 'coaching') {
-              coachingText += data
-              setCoaching(coachingText)
+            if (currentEvent === 'token') {
+              fullText += data
+              setStreaming(fullText)
             } else if (currentEvent === 'error') {
-              setCoachError(data)
+              setChatError(data)
             }
           }
         }
       }
+
+      // Streaming done — finalize message
+      if (fullText) {
+        // Check for FEN marker
+        const assistantMsg: ChatMsg = {
+          role: 'assistant',
+          text: fullText,
+        }
+        setChatMessages(prev => [...prev, assistantMsg])
+        setStreaming('')
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
-      setCoachError(err instanceof Error ? err.message : 'Coaching request failed.')
+      setChatError(err instanceof Error ? err.message : 'Chat request failed.')
     } finally {
-      setCoachLoading(false)
+      setChatLoading(false)
+      setStreaming('')
     }
-  }, [])
+  }, [chatMessages, currentFen, engineData, history, currentIndex])
 
   // ── Auto-analyze on position change ──
 
@@ -296,12 +369,7 @@ function App() {
                 lastMove: [orig, dest],
                 san: move.san,
               }
-              setHistory(prev => {
-                // Get current index from prev length context — we always
-                // append at the latest when making a move
-                const sliced = prev.slice(0, prev.length)
-                return [...sliced, newEntry]
-              })
+              setHistory(prev => [...prev.slice(0, prev.length), newEntry])
               setCurrentIndex(prev => prev + 1)
               cgRef.current?.set({
                 turnColor: turnColor(chess),
@@ -334,40 +402,23 @@ function App() {
   const goForward = useCallback(() => navigateTo(currentIndex + 1), [navigateTo, currentIndex])
   const goEnd = useCallback(() => navigateTo(history.length - 1), [navigateTo, history.length])
 
-  // When a move is made while viewing a past position, we need to handle it:
-  // The move handler always appends. But if we're viewing a past position,
-  // we need to truncate forward history first and jump to the end.
-  // We do this by jumping to the end before allowing moves.
-  // When currentIndex changes and we're not at latest, disable moves.
   useEffect(() => {
     if (!cgRef.current) return
     if (atLatest) {
       const chess = chessRef.current
       cgRef.current.set({
-        movable: {
-          color: turnColor(chess),
-          dests: toDests(chess),
-        },
+        movable: { color: turnColor(chess), dests: toDests(chess) },
       })
     } else {
       cgRef.current.set({
-        movable: {
-          color: undefined,
-          dests: undefined,
-        },
+        movable: { color: undefined, dests: undefined },
       })
     }
   }, [atLatest])
 
-  // Handle making a move when not at latest: jump to end first, truncate
-  // Actually, simpler: only allow moves at latest position (handled above)
-  // If user wants to play from a past position, they need to go to end first.
-  // TODO: Could truncate and allow, but for now this matches Lichess behavior.
-
-  // Keyboard navigation
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.key === 'ArrowLeft') { e.preventDefault(); goBack() }
       else if (e.key === 'ArrowRight') { e.preventDefault(); goForward() }
     }
@@ -385,32 +436,34 @@ function App() {
       setHistory([entry])
       setCurrentIndex(0)
       showPosition(entry, true)
-    } catch {
-      // invalid FEN
-    }
+    } catch { /* invalid FEN */ }
   }
 
   const handleToggleAnalysis = () => {
     if (analyzing) {
       engineAbortRef.current?.abort()
-      coachAbortRef.current?.abort()
+      chatAbortRef.current?.abort()
       setAnalyzing(false)
       setEngineLoading(false)
-      setCoachLoading(false)
+      setChatLoading(false)
       setEngineData(null)
-      setCoaching('')
       setEngineError('')
-      setCoachError('')
+      setChatError('')
+      setChatMessages([])
+      setStreaming('')
     } else {
       setAnalyzing(true)
     }
   }
 
   const handleCoachMe = () => {
-    if (!engineData) return
-    // Build move list from history up to current position
-    const moves = history.slice(1, currentIndex + 1).map(h => h.san).filter(Boolean) as string[]
-    fetchCoaching(currentFen, engineData, moves)
+    sendChat('Analyze this position and coach me.')
+  }
+
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!chatInput.trim() || chatLoading) return
+    sendChat(chatInput.trim())
   }
 
   const handleReset = () => {
@@ -419,9 +472,10 @@ function App() {
     setHistory([{ fen: START_FEN }])
     setCurrentIndex(0)
     setEngineData(null)
-    setCoaching('')
     setEngineError('')
-    setCoachError('')
+    setChatMessages([])
+    setStreaming('')
+    setChatError('')
     showPosition({ fen: START_FEN }, true)
   }
 
@@ -480,37 +534,43 @@ function App() {
         <div className="side-panel">
           <MoveList history={history} currentIndex={currentIndex} onJump={navigateTo} />
 
-          <section className="coaching-section">
-            <div className="coaching-header">
-              <h3>Coach {coachLoading && <span className="loading-dot" />}</h3>
+          <section className="chat-section">
+            <div className="chat-header">
+              <h3>Coach {chatLoading && <span className="loading-dot" />}</h3>
               {analyzing && (
                 <button
                   className="btn-coach"
                   onClick={handleCoachMe}
-                  disabled={coachLoading || !hasKey || !hasEngine}
+                  disabled={chatLoading || !hasKey || !hasEngine}
                   title={!hasKey ? 'Set your API key in Settings' : undefined}
                 >
-                  {coachLoading ? 'Thinking...' : 'Coach me'}
+                  {chatLoading ? 'Thinking...' : 'Coach me'}
                 </button>
               )}
             </div>
-            <div className="coaching-body">
-              {coachError ? (
-                <p className="error-msg">{coachError}</p>
-              ) : coaching ? (
-                <p dangerouslySetInnerHTML={{
-                  __html: cleanCoaching(coaching)
-                }} />
-              ) : (
-                <p className="placeholder">
-                  {!hasKey
-                    ? 'Set your API key in ⚙ Settings to use the coach.'
-                    : analyzing
-                      ? 'Click "Coach me" for position advice.'
-                      : 'Click Analyze to start engine analysis.'}
-                </p>
-              )}
-            </div>
+
+            <ChatMessages messages={chatMessages} streaming={streaming} />
+
+            {chatError && <div className="error-msg">{chatError}</div>}
+
+            <form className="chat-input-form" onSubmit={handleChatSubmit}>
+              <input
+                type="text"
+                className="chat-input"
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                placeholder={hasKey ? 'Ask about this position...' : 'Set API key in ⚙ Settings'}
+                disabled={!hasKey || chatLoading}
+                spellCheck={false}
+              />
+              <button
+                type="submit"
+                className="btn-send"
+                disabled={!hasKey || chatLoading || !chatInput.trim()}
+              >
+                ↑
+              </button>
+            </form>
           </section>
 
           <section className="engine-section">

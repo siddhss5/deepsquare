@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from app import engine
-from app.coach import EngineInput, stream_coaching
+from app.coach import ChatMessage, EngineInput, stream_chat
 
 
 @asynccontextmanager
@@ -46,11 +46,17 @@ class AnalyzeResponse(BaseModel):
     top_lines: list[EngineLine]
 
 
-class CoachRequest(BaseModel):
+class ChatMessageIn(BaseModel):
+    role: str
+    text: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessageIn]
     fen: str
-    engine_eval: float
-    top_lines: list[EngineLine]
-    moves: list[str] = []  # SAN move history leading to this position
+    moves: list[str] = []
+    engine_eval: float | None = None
+    top_lines: list[EngineLine] | None = None
 
 
 # ── Endpoints ──
@@ -63,7 +69,7 @@ def health():
 @app.post("/analyze", response_model=AnalyzeResponse)
 def analyze(req: AnalyzeRequest):
     try:
-        chess.Board(req.fen)  # validate FEN
+        chess.Board(req.fen)
     except ValueError:
         return JSONResponse(status_code=422, content={"error": "Invalid FEN string."})
 
@@ -78,21 +84,32 @@ def analyze(req: AnalyzeRequest):
     )
 
 
-@app.post("/coach")
-async def coach(req: CoachRequest, request: Request):
-    """SSE endpoint: accepts engine data + API key from frontend, streams coaching."""
+@app.post("/chat")
+async def chat(req: ChatRequest, request: Request):
+    """SSE endpoint: conversational coach with board control."""
     api_key = request.headers.get("x-api-key")
     model = request.headers.get("x-llm-model")
 
-    engine_input = EngineInput(
-        eval=req.engine_eval,
-        top_lines=[{"moves": l.moves, "eval": l.eval} for l in req.top_lines],
-    )
+    engine_input = None
+    if req.engine_eval is not None and req.top_lines is not None:
+        engine_input = EngineInput(
+            eval=req.engine_eval,
+            top_lines=[{"moves": l.moves, "eval": l.eval} for l in req.top_lines],
+        )
+
+    messages = [ChatMessage(role=m.role, text=m.text) for m in req.messages]
 
     def event_generator():
         try:
-            for token in stream_coaching(req.fen, engine_input, moves=req.moves, api_key=api_key, model=model):
-                yield {"event": "coaching", "data": token}
+            for token in stream_chat(
+                messages=messages,
+                fen=req.fen,
+                moves=req.moves,
+                engine=engine_input,
+                api_key=api_key,
+                model=model,
+            ):
+                yield {"event": "token", "data": token}
             yield {"event": "done", "data": ""}
         except ValueError as e:
             yield {"event": "error", "data": str(e)}
@@ -105,6 +122,6 @@ async def coach(req: CoachRequest, request: Request):
             elif "balance" in msg.lower() or "credit" in msg.lower():
                 yield {"event": "error", "data": "Insufficient API credits. Add credits to your account."}
             else:
-                yield {"event": "error", "data": f"Coaching error: {msg}"}
+                yield {"event": "error", "data": f"Chat error: {msg}"}
 
     return EventSourceResponse(event_generator())

@@ -258,21 +258,26 @@ main {
   margin-bottom: 8px;
 }
 
-/* ── Coaching section ── */
-.coaching-section {
+/* ── Chat section ── */
+.chat-section {
   background: var(--bg-surface);
   border-radius: 8px;
-  padding: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  max-height: 400px;
 }
 
-.coaching-header {
+.chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
+  padding: 0 4px;
 }
 
-.coaching-header h3 {
+.chat-header h3 {
   margin-bottom: 0;
 }
 
@@ -298,10 +303,100 @@ main {
   cursor: not-allowed;
 }
 
-.coaching-body p {
-  line-height: 1.65;
-  font-size: 15px;
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 4px;
+}
+
+.chat-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 8px;
+}
+
+.chat-msg p {
+  line-height: 1.6;
+  font-size: 14px;
+  margin: 0;
+}
+
+.chat-user {
+  align-self: flex-end;
+  background: var(--accent);
   color: var(--text);
+  padding: 8px 12px;
+  border-radius: 12px 12px 2px 12px;
+  max-width: 85%;
+}
+
+.chat-assistant {
+  align-self: flex-start;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 12px 12px 12px 2px;
+  max-width: 85%;
+}
+
+.chat-fen-set {
+  font-size: 11px;
+  color: #52b788;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.chat-input-form {
+  display: flex;
+  gap: 6px;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: var(--accent-bright);
+}
+
+.chat-input:disabled {
+  opacity: 0.5;
+}
+
+.btn-send {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.btn-send:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.btn-send:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 code.move {
@@ -312,15 +407,6 @@ code.move {
   color: var(--accent-bright);
   padding: 1px 5px;
   border-radius: 3px;
-}
-
-.coaching-body p.placeholder {
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-.coaching-body p.is-stale {
-  opacity: 0.5;
 }
 
 /* ── Engine lines ── */
@@ -611,7 +697,12 @@ code.move {
     max-width: 480px;
   }
 
-  .coaching-body p {
-    font-size: 14px;
+  .chat-section {
+    max-height: 300px;
+    min-height: 150px;
+  }
+
+  .chat-msg p {
+    font-size: 13px;
   }
 }

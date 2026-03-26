@@ -35,12 +35,28 @@ def stop() -> None:
         _engine = None
 
 
-def analyze(fen: str, time_limit: float = 1.0, num_lines: int = 3) -> AnalysisResult:
+def _ensure_running() -> chess.engine.SimpleEngine:
+    """Return the engine, restarting it if it crashed."""
+    global _engine
     if _engine is None:
         raise RuntimeError("Engine not started — call engine.start() first")
+    try:
+        # Ping the engine to check if it's alive
+        _engine.ping()
+    except chess.engine.EngineTerminatedError:
+        # Engine crashed — restart it
+        _engine = None
+        start()
+        if _engine is None:
+            raise RuntimeError("Failed to restart engine")
+    return _engine
+
+
+def analyze(fen: str, time_limit: float = 1.0, num_lines: int = 3) -> AnalysisResult:
+    eng = _ensure_running()
 
     board = chess.Board(fen)
-    infos = _engine.analyse(board, chess.engine.Limit(time=time_limit), multipv=num_lines)
+    infos = eng.analyse(board, chess.engine.Limit(time=time_limit), multipv=num_lines)
 
     lines: list[Line] = []
     for info in infos:
