@@ -37,24 +37,36 @@ def _load_db() -> list[dict]:
 def _score_match(entry: dict, query: str) -> int:
     """Score how well an entry matches the query. Higher is better."""
     q = query.lower()
-    words = q.split()
-    score = 0
+    words = [w for w in q.split() if len(w) > 2]  # skip short words like "a", "vs"
+    if not words:
+        return 0
 
     name_lower = entry["name"].lower()
-    tags_lower = " ".join(entry.get("tags", [])).lower()
+    tags = [t.lower() for t in entry.get("tags", [])]
+    tags_str = " ".join(tags)
     desc_lower = entry.get("description", "").lower()
 
-    # Exact name match
+    score = 0
+
+    # Full query match in name
     if q in name_lower:
         score += 100
-    # Word matches in name (highest weight)
-    for w in words:
-        if w in name_lower:
-            score += 20
-        if w in tags_lower:
-            score += 10
-        if w in desc_lower:
-            score += 3
+
+    # Full tag match (e.g., "rook endgame" matches tag "rook endgame")
+    for tag in tags:
+        if tag in q or q in tag:
+            score += 30
+
+    # Word matches — count how many query words match
+    name_hits = sum(1 for w in words if w in name_lower)
+    tag_hits = sum(1 for w in words if w in tags_str)
+    desc_hits = sum(1 for w in words if w in desc_lower)
+
+    # Reward proportional matching — more matched words = much higher score
+    match_ratio = (name_hits + tag_hits) / len(words) if words else 0
+    score += int(name_hits * 15 * match_ratio)
+    score += int(tag_hits * 8 * match_ratio)
+    score += desc_hits * 2
 
     return score
 
@@ -63,7 +75,7 @@ def search_curated(query: str, limit: int = 3) -> list[PositionResult]:
     """Search the curated position database."""
     db = _load_db()
     scored = [(entry, _score_match(entry, query)) for entry in db]
-    scored = [(e, s) for e, s in scored if s > 0]
+    scored = [(e, s) for e, s in scored if s >= 10]
     scored.sort(key=lambda x: x[1], reverse=True)
 
     return [

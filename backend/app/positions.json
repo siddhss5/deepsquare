@@ -166,5 +166,23 @@
     "tags": ["famous game", "anderssen", "evergreen", "romantic chess", "sacrifice"],
     "description": "Adolf Anderssen's brilliant attack with multiple sacrifices — a jewel of romantic chess",
     "fen": "r1b2rk1/pppp1ppp/8/4P3/1n2P1nq/2N2N2/PPP1BKPP/R1BQ3R w - - 0 1"
+  },
+  {
+    "name": "Bishop and Pawns Endgame (Good vs Bad Bishop)",
+    "tags": ["bishop endgame", "endgame", "pawn endgame", "good bishop", "bad bishop"],
+    "description": "White's bishop is active on the long diagonal while Black's bishop is blocked by its own pawns — a classic good vs bad bishop endgame",
+    "fen": "8/pp3pp1/2p1b2p/3p4/3P1B2/2P2P1P/PP3PP1/4K2k w - - 0 1"
+  },
+  {
+    "name": "Opposite-Colored Bishops Endgame",
+    "tags": ["bishop endgame", "endgame", "opposite colored bishops", "drawing"],
+    "description": "Opposite-colored bishops often lead to draws even with extra pawns — the defender's bishop controls the promotion squares",
+    "fen": "8/3k1pp1/p2b4/1p1P4/1P6/P4B2/5PP1/6K1 w - - 0 1"
+  },
+  {
+    "name": "Wrong-Colored Bishop and Rook Pawn",
+    "tags": ["bishop endgame", "endgame", "rook pawn", "wrong bishop", "drawing"],
+    "description": "A famous drawing pattern — the bishop cannot control the promotion square of a rook pawn, so the defender's king reaches the corner",
+    "fen": "7k/8/6KP/8/2B5/8/8/8 w - - 0 1"
   }
 ]
