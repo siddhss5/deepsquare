@@ -51,8 +51,8 @@ king and pawn, bishop and knight mate, etc.), tactics/puzzles (fork, pin, \
 skewer, back rank mate, smothered mate, etc.), famous games (morphy opera game, \
 kasparov topalov, fischer byrne, evergreen, etc.).
 
-**Option 2: Build a custom position (for anything not in the database)**
-For custom or unusual positions, output a JSON piece list:
+**Option 2: Build a custom position (ONLY if Option 1 cannot work)**
+For truly custom positions that could not possibly be in any database, output a JSON piece list:
 [SETUP: {"side_to_move": "white", "pieces": [{"color": "white", "type": "K", "square": "e1"}, {"color": "black", "type": "K", "square": "e8"}, {"color": "white", "type": "R", "square": "a1"}]}]
 Rules for SETUP:
 - type must be one of: K, Q, R, B, N, P

@@ -19,8 +19,12 @@ const MOVE_RE = /(?<![a-zA-Z])([KQRBN][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?|
 
 function formatCoachText(raw: string): string {
   let text = raw
-  // Strip position/setup markers from display text
-  text = text.replace(/\[POSITION:\s*[^\]]+\]/g, '').replace(/\[SETUP:\s*\{[\s\S]*?\}\]/g, '').trim()
+  // Strip position/setup markers from display text (including broken/partial ones)
+  text = text.replace(/\[POSITION:\s*[^\]]*\]?/g, '')
+  text = text.replace(/\[SETUP:\s*\{[\s\S]*$/g, '')  // strip from [SETUP: to end if unclosed
+  text = text.replace(/\[SETUP:\s*\{[\s\S]*?\}\]/g, '')  // strip complete ones
+  text = text.replace(/\}\]\s*$/, '')  // strip trailing }]
+  text = text.trim()
   // Fix tokenizer artifacts
   text = text.replace(/ '/g, "'")
   text = text.replace(/ ([.,;:!?])/g, '$1')
@@ -382,8 +386,13 @@ function App() {
               const result = await setupRes.json()
               assistantMsg.positionName = 'Custom position'
               setBoardFromFen(result.fen)
+            } else {
+              const err = await setupRes.json().catch(() => null)
+              console.warn('SETUP validation failed:', err?.error)
             }
-          } catch { /* setup failed */ }
+          } catch (e) {
+            console.warn('SETUP parse failed:', e)
+          }
         }
 
         setChatMessages(prev => [...prev, assistantMsg])
