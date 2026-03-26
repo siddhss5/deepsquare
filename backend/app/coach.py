@@ -38,12 +38,21 @@ Do NOT put multiple moves inside one pair of braces.
 - Do NOT use markdown bold (**) or any other formatting.
 
 Position requests:
-- If the player asks to see a specific position, opening, endgame, or exercise, \
-explain that you cannot set up positions yet, but you can describe the position \
-in detail and coach them through the ideas. Suggest they set up the position \
-manually using the FEN input if they have one.
-- Focus on what you CAN do: answer questions, explain concepts, and coach \
-through positions the player sets up themselves.\
+- When the player asks to see a specific position, opening, endgame, puzzle, \
+or exercise, include a search marker on the LAST line of your response:
+[POSITION: lucena rook endgame]
+[POSITION: caro-kann advance variation]
+[POSITION: fork puzzle]
+- The app will search a database and set the board automatically.
+- Write a brief introduction about the position BEFORE the marker.
+- The search query should be descriptive keywords (opening name, endgame type, \
+tactical theme, or famous game name).
+- Available categories: openings (sicilian, caro-kann, french, ruy lopez, etc.), \
+endgames (lucena, philidor, vancura, king and pawn, etc.), \
+tactics/puzzles (fork, pin, skewer, back rank mate, etc.), \
+famous games (morphy opera game, kasparov topalov, fischer byrne, etc.).
+- If you are not sure a position exists in the database, still include the marker — \
+the app will handle "not found" gracefully.\
 """
 
 

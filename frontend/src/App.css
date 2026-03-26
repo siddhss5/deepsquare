@@ -351,6 +351,13 @@ main {
   font-weight: 600;
 }
 
+.chat-position-loaded {
+  font-size: 11px;
+  color: #52b788;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
 .chat-input-form {
   display: flex;
   gap: 6px;

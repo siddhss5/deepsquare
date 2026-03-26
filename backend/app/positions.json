@@ -1,0 +1,170 @@
+[
+  {
+    "name": "Lucena Position",
+    "tags": ["rook endgame", "endgame", "lucena", "bridge technique", "winning"],
+    "description": "White wins by building a bridge — the rook shelters the king from checks while the pawn promotes",
+    "fen": "1K1k4/1P6/8/8/8/8/r7/2R5 w - - 0 1"
+  },
+  {
+    "name": "Philidor Position",
+    "tags": ["rook endgame", "endgame", "philidor", "drawing", "defensive"],
+    "description": "Black draws by keeping the rook on the 6th rank to prevent the king from advancing, then switching to back-rank checks",
+    "fen": "4k3/8/4r3/8/4PK2/8/R7/8 w - - 0 1"
+  },
+  {
+    "name": "Vancura Position",
+    "tags": ["rook endgame", "endgame", "vancura", "rook and pawn", "drawing"],
+    "description": "Black draws against a rook pawn by keeping the rook on the a-file with lateral checks",
+    "fen": "8/8/8/P7/K7/8/4k3/r5R1 w - - 0 1"
+  },
+  {
+    "name": "King and Pawn vs King (Opposition)",
+    "tags": ["pawn endgame", "endgame", "opposition", "basic"],
+    "description": "White wins if they have the opposition — a fundamental endgame concept",
+    "fen": "8/8/4k3/8/4P3/4K3/8/8 w - - 0 1"
+  },
+  {
+    "name": "Queen vs Pawn on 7th Rank",
+    "tags": ["queen endgame", "endgame", "queen vs pawn", "winning technique"],
+    "description": "White must use a staircase technique to bring the king closer while checking with the queen",
+    "fen": "8/1P6/8/8/8/5k2/8/K5q1 w - - 0 1"
+  },
+  {
+    "name": "Bishop and Knight Checkmate",
+    "tags": ["endgame", "checkmate", "bishop and knight", "mating technique"],
+    "description": "The hardest basic checkmate — requires driving the king to a corner matching the bishop's color",
+    "fen": "8/8/8/8/8/4k3/8/4KBN1 w - - 0 1"
+  },
+  {
+    "name": "Two Bishops Checkmate",
+    "tags": ["endgame", "checkmate", "two bishops", "mating technique"],
+    "description": "Coordinate the bishops to create a diagonal barrier driving the king to the edge",
+    "fen": "8/8/8/8/8/4k3/8/3KBB2 w - - 0 1"
+  },
+  {
+    "name": "Scholar's Mate",
+    "tags": ["opening trap", "scholar's mate", "beginner", "checkmate"],
+    "description": "White threatens Qxf7# — Black must know how to refute this common beginner attack",
+    "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR b KQkq - 3 3"
+  },
+  {
+    "name": "Legal's Mate Trap",
+    "tags": ["opening trap", "legal's mate", "sacrifice", "checkmate"],
+    "description": "White sacrifices the queen and delivers checkmate with minor pieces — a classic trap in the Philidor Defense",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 4 4"
+  },
+  {
+    "name": "Fried Liver Attack",
+    "tags": ["opening", "fried liver", "italian game", "two knights", "attack", "sacrifice"],
+    "description": "White sacrifices a knight on f7 for a ferocious attack against the exposed black king",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p1N1/2B1P3/8/PPPP1PPP/RNBQK2R b KQkq - 5 4"
+  },
+  {
+    "name": "Sicilian Najdorf (Main Line)",
+    "tags": ["opening", "sicilian", "najdorf", "e4", "sharp"],
+    "description": "One of the sharpest and most popular defenses — Black challenges White's center from the flank",
+    "fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6"
+  },
+  {
+    "name": "Sicilian Dragon",
+    "tags": ["opening", "sicilian", "dragon", "e4", "fianchetto"],
+    "description": "Black fianchettoes the bishop on g7, creating a powerful diagonal aimed at White's queenside",
+    "fen": "rnbqkb1r/pp2pp1p/3p1np1/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6"
+  },
+  {
+    "name": "Caro-Kann Defense (Advance Variation)",
+    "tags": ["opening", "caro-kann", "advance", "e4", "solid"],
+    "description": "White pushes e5 gaining space, Black aims to undermine with c5 and f6",
+    "fen": "rnbqkbnr/pp2pppp/2p5/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3"
+  },
+  {
+    "name": "French Defense (Winawer Variation)",
+    "tags": ["opening", "french", "winawer", "e4", "positional"],
+    "description": "Black pins the knight with Bb4, leading to complex pawn structures and strategic play",
+    "fen": "rnbqk1nr/ppp2ppp/4p3/3p4/1b1PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 2 4"
+  },
+  {
+    "name": "Queen's Gambit Declined",
+    "tags": ["opening", "queens gambit", "qgd", "d4", "classical"],
+    "description": "Black defends the d5 pawn with e6, leading to solid but slightly passive positions",
+    "fen": "rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3"
+  },
+  {
+    "name": "King's Indian Defense",
+    "tags": ["opening", "kings indian", "kid", "d4", "hypermodern", "attack"],
+    "description": "Black allows White to build a big center, then counterattacks with e5 or c5",
+    "fen": "rnbqkb1r/pppppp1p/5np1/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3"
+  },
+  {
+    "name": "Ruy Lopez (Closed)",
+    "tags": ["opening", "ruy lopez", "spanish", "e4", "classical"],
+    "description": "One of the oldest and most respected openings — White pressures Black's center via the bishop on b5",
+    "fen": "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4"
+  },
+  {
+    "name": "Italian Game",
+    "tags": ["opening", "italian", "giuoco piano", "e4", "classical"],
+    "description": "White develops the bishop to c4 targeting f7, leading to rich tactical play",
+    "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3"
+  },
+  {
+    "name": "London System",
+    "tags": ["opening", "london", "d4", "system", "solid"],
+    "description": "White develops Bf4, e3, Nf3 in almost any move order — a low-theory system opening",
+    "fen": "rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/5N2/PPP1PPPP/RN1QKB1R b KQkq - 3 3"
+  },
+  {
+    "name": "Blackburne Shilling Gambit Trap",
+    "tags": ["opening trap", "blackburne shilling", "gambit", "italian"],
+    "description": "Black sets a trap with Nd4 — if White takes the pawn on e5, Qg5 wins material",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
+  },
+  {
+    "name": "Englund Gambit Trap",
+    "tags": ["opening trap", "englund gambit", "d4", "queen trap"],
+    "description": "Black gambits a pawn after 1.d4 e5 — if White is careless, Black traps the queen",
+    "fen": "rnbqkbnr/pppp1ppp/8/4p3/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2"
+  },
+  {
+    "name": "Back Rank Mate Pattern",
+    "tags": ["tactic", "back rank mate", "checkmate pattern", "rook"],
+    "description": "The classic back rank mate — the rook delivers checkmate because the king is trapped behind its own pawns",
+    "fen": "6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1"
+  },
+  {
+    "name": "Anastasia's Mate Pattern",
+    "tags": ["tactic", "anastasia's mate", "checkmate pattern", "knight and rook"],
+    "description": "Knight and rook coordinate to deliver mate on the h-file with the king trapped by its own pawn",
+    "fen": "4k2r/4npp1/8/8/7N/8/5PPP/6K1 w k - 0 1"
+  },
+  {
+    "name": "Smothered Mate Pattern",
+    "tags": ["tactic", "smothered mate", "checkmate pattern", "knight"],
+    "description": "The knight delivers checkmate to a king completely surrounded by its own pieces",
+    "fen": "r1b3kr/pppq1ppp/2n1pn2/8/3P4/2N2N2/PPP1QPPP/R1B1K2R w KQ - 0 1"
+  },
+  {
+    "name": "Morphy's Opera Game (Key Position)",
+    "tags": ["famous game", "morphy", "opera game", "attack", "development"],
+    "description": "Paul Morphy's most famous game — a masterclass in rapid development and attack",
+    "fen": "rn2kb1r/p3qppp/2p2n2/1p2p1B1/2B1P3/1QN5/PPP2PPP/R3K2R w KQkq - 2 10"
+  },
+  {
+    "name": "Kasparov vs Topalov 1999 (Key Position)",
+    "tags": ["famous game", "kasparov", "topalov", "attack", "sacrifice"],
+    "description": "Kasparov's immortal — a stunning rook sacrifice followed by a king hunt across the board",
+    "fen": "1rr3k1/4ppbp/2qp1np1/pp6/2bPPB2/2N2P1P/PPQ2BP1/1R1R2K1 w - - 0 18"
+  },
+  {
+    "name": "Byrne vs Fischer 1956 (Game of the Century)",
+    "tags": ["famous game", "fischer", "byrne", "game of the century", "sacrifice", "queen sacrifice"],
+    "description": "13-year-old Bobby Fischer's queen sacrifice against Donald Byrne — the Game of the Century",
+    "fen": "1r2r1k1/pp1n1ppp/2pq1b2/8/2BP4/1QN3P1/PP3P1P/R1B2RK1 b - - 0 17"
+  },
+  {
+    "name": "Evergreen Game (Key Position)",
+    "tags": ["famous game", "anderssen", "evergreen", "romantic chess", "sacrifice"],
+    "description": "Adolf Anderssen's brilliant attack with multiple sacrifices — a jewel of romantic chess",
+    "fen": "r1b2rk1/pppp1ppp/8/4P3/1n2P1nq/2N2N2/PPP1BKPP/R1BQ3R w - - 0 1"
+  }
+]
