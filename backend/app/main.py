@@ -9,6 +9,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app import engine, positions
 from app.coach import ChatMessage, EngineInput, stream_chat
+from app.positions import validate_and_convert_setup
 
 
 @asynccontextmanager
@@ -74,6 +75,15 @@ async def search_positions(q: str):
         {"name": r.name, "description": r.description, "fen": r.fen, "source": r.source}
         for r in results
     ]
+
+
+@app.post("/positions/setup")
+def setup_position(data: dict):
+    """Validate a structured piece list and convert to FEN."""
+    fen, error = validate_and_convert_setup(data)
+    if error:
+        return JSONResponse(status_code=422, content={"error": error})
+    return {"fen": fen}
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)

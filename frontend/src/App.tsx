@@ -11,6 +11,7 @@ import './App.css'
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 const POSITION_MARKER_RE = /\[POSITION:\s*([^\]]+)\]/
+const SETUP_MARKER_RE = /\[SETUP:\s*(\{[\s\S]*?\})\]/
 
 // ── Helpers ──
 
@@ -18,8 +19,8 @@ const MOVE_RE = /(?<![a-zA-Z])([KQRBN][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?|
 
 function formatCoachText(raw: string): string {
   let text = raw
-  // Strip position markers from display text
-  text = text.replace(/\[POSITION:\s*[^\]]+\]/g, '').trim()
+  // Strip position/setup markers from display text
+  text = text.replace(/\[POSITION:\s*[^\]]+\]/g, '').replace(/\[SETUP:\s*\{[\s\S]*?\}\]/g, '').trim()
   // Fix tokenizer artifacts
   text = text.replace(/ '/g, "'")
   text = text.replace(/ ([.,;:!?])/g, '$1')
@@ -344,13 +345,14 @@ function App() {
       // Streaming done — finalize message
       if (fullText) {
         const posMatch = fullText.match(POSITION_MARKER_RE)
+        const setupMatch = fullText.match(SETUP_MARKER_RE)
         const assistantMsg: ChatMsg = {
           role: 'assistant',
           text: fullText,
         }
 
         if (posMatch) {
-          // Search for the position
+          // Search curated database
           const query = posMatch[1].trim()
           try {
             const searchRes = await fetch(`/api/positions/search?q=${encodeURIComponent(query)}`, {
@@ -364,7 +366,24 @@ function App() {
                 setBoardFromFen(pos.fen)
               }
             }
-          } catch { /* search failed — no big deal, just don't set the board */ }
+          } catch { /* search failed */ }
+        } else if (setupMatch) {
+          // Validate structured piece list and convert to FEN
+          try {
+            const setupJson = setupMatch[1].replace(/\s+/g, ' ')
+            const setupData = JSON.parse(setupJson)
+            const setupRes = await fetch('/api/positions/setup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(setupData),
+              signal: controller.signal,
+            })
+            if (setupRes.ok) {
+              const result = await setupRes.json()
+              assistantMsg.positionName = 'Custom position'
+              setBoardFromFen(result.fen)
+            }
+          } catch { /* setup failed */ }
         }
 
         setChatMessages(prev => [...prev, assistantMsg])

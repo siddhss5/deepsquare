@@ -2,6 +2,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+import chess
 import httpx
 
 _DB: list[dict] = []
@@ -130,7 +131,6 @@ async def search_lichess_puzzle(query: str) -> PositionResult | None:
                 return None
 
             # Replay PGN to get the puzzle starting position
-            import chess
             board = chess.Board()
             for san in pgn.split():
                 try:
@@ -147,6 +147,94 @@ async def search_lichess_puzzle(query: str) -> PositionResult | None:
             )
     except Exception:
         return None
+
+
+PIECE_MAP = {
+    "K": chess.KING, "Q": chess.QUEEN, "R": chess.ROOK,
+    "B": chess.BISHOP, "N": chess.KNIGHT, "P": chess.PAWN,
+}
+
+COLOR_MAP = {"white": chess.WHITE, "black": chess.BLACK}
+
+
+def validate_and_convert_setup(data: dict) -> tuple[str | None, str | None]:
+    """Validate a structured piece list and convert to FEN.
+    Returns (fen, None) on success or (None, error_message) on failure."""
+    pieces = data.get("pieces", [])
+    side_to_move = data.get("side_to_move", "white").lower()
+
+    if side_to_move not in COLOR_MAP:
+        return None, f"Invalid side_to_move: {side_to_move}"
+
+    # Validate pieces
+    seen_squares: dict[str, dict] = {}
+    kings = {"white": 0, "black": 0}
+    pawns = {"white": 0, "black": 0}
+    king_squares: dict[str, int] = {}
+
+    for piece in pieces:
+        color = piece.get("color", "").lower()
+        ptype = piece.get("type", "").upper()
+        square = piece.get("square", "").lower()
+
+        if color not in COLOR_MAP:
+            return None, f"Invalid color: {color}"
+        if ptype not in PIECE_MAP:
+            return None, f"Invalid piece type: {ptype}"
+        if len(square) != 2 or square[0] not in "abcdefgh" or square[1] not in "12345678":
+            return None, f"Invalid square: {square}"
+
+        sq_index = chess.parse_square(square)
+
+        # Duplicate square — keep the last one (auto-fix)
+        if square in seen_squares:
+            pass  # will be overwritten
+        seen_squares[square] = piece
+
+        if ptype == "K":
+            kings[color] += 1
+            king_squares[color] = sq_index
+        if ptype == "P":
+            pawns[color] += 1
+            rank = int(square[1])
+            if rank == 1 or rank == 8:
+                return None, f"Pawn on invalid rank: {square}"
+
+    # Must have exactly one king per side
+    for c in ("white", "black"):
+        if kings[c] != 1:
+            return None, f"{c} must have exactly 1 king (found {kings[c]})"
+
+    # Kings cannot be adjacent
+    wk = king_squares.get("white")
+    bk = king_squares.get("black")
+    if wk is not None and bk is not None:
+        if chess.square_distance(wk, bk) <= 1:
+            return None, "Kings cannot be adjacent"
+
+    # Max 8 pawns per side
+    for c in ("white", "black"):
+        if pawns[c] > 8:
+            return None, f"{c} has too many pawns ({pawns[c]})"
+
+    # Build the board
+    board = chess.Board.empty()
+    board.turn = COLOR_MAP[side_to_move]
+
+    for square, piece in seen_squares.items():
+        color = COLOR_MAP[piece["color"].lower()]
+        ptype = PIECE_MAP[piece["type"].upper()]
+        sq_index = chess.parse_square(square)
+        board.set_piece_at(sq_index, chess.Piece(ptype, color))
+
+    # Check if the side NOT to move is in check (illegal)
+    board.turn = not board.turn  # temporarily switch
+    if board.is_check():
+        board.turn = not board.turn
+        return None, "The side not to move is in check (illegal position)"
+    board.turn = not board.turn
+
+    return board.fen(), None
 
 
 async def search(query: str) -> list[PositionResult]:
